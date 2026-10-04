@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.1
+
+- Setup notices when the chosen folder is one level too high: if it holds no
+  notes but its `notes` folder does, it offers to use that folder.
+- "Change location" beside the bound path at the bottom of the pane opens
+  setup again (with Cancel to go back). Notes stay where they are; choose the
+  folder that holds them.
+
 ## 0.1.0
 
 First public release of Collaborative Notes for the Claude desktop app

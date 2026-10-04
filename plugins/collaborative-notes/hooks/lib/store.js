@@ -67,7 +67,13 @@ export async function inspectRoot(io, root) {
   if (!stat || stat.kind !== "dir") return { exists: true, notDir: true, lanes: [] };
   const entries = await io.list(root).catch(() => []);
   const lanes = entries.filter((e) => e.kind === "dir" && isLaneKey(e.name)).map((e) => e.name);
-  return { exists: true, lanes };
+  // One level too high (the folder that holds `notes`): point to it.
+  let nested = "";
+  if (lanes.length === 0 && entries.some((e) => e.kind === "dir" && e.name === "notes")) {
+    const inner = await io.list(join(root, "notes")).catch(() => []);
+    if (inner.some((e) => e.kind === "dir" && isLaneKey(e.name))) nested = join(root, "notes");
+  }
+  return { exists: true, lanes, nested };
 }
 
 // Create the root at setup time (and only then).

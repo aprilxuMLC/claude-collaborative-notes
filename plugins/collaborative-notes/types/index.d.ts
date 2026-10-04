@@ -13,7 +13,7 @@ export type NotesView = {
   root: string | null
   setup: {
     candidate: string; exists: boolean; notDir: boolean; lanes: string[]; other: boolean; error: string
-    browsePath: string; folders: string[]; laneNames: string[]
+    browsePath: string; folders: string[]; laneNames: string[]; nested?: string; previous?: string
   } | null
 }
 

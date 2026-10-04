@@ -170,6 +170,7 @@ const startSetup = async ($: any, v: NotesView, candidate: string, other = false
     ...v,
     setup: {
       candidate, exists: info.exists, notDir: Boolean(info.notDir), lanes: info.lanes, other, error: '',
+      nested: info.nested ?? '', previous: current?.setup?.previous ?? '',
       browsePath: current?.setup?.browsePath ?? v.project,
       folders: current?.setup?.folders ?? [],
       laneNames: current?.setup?.laneNames ?? lanes.map((entry: any) => entry.descriptive),
@@ -956,6 +957,12 @@ const renderPane = async ($: any, e: any) => {
           <Text dimColor>{t('setupProposed')}</Text>
           <Text bold>{s.candidate}</Text>
           {s.lanes.length > 0 ? <Text>{t('setupExisting', { lanes: s.lanes.length })}</Text> : null}
+          {s.nested
+            ? <Box flexDirection="column">
+              <Text color="yellow">{t('setupNested', { path: s.nested })}</Text>
+              <Button key="setup-nested" variant="primary" label={t('setupUseNested')} onPress={() => startSetup($, v, s.nested as string, s.other)} />
+            </Box>
+            : null}
           {s.notDir ? <Text color="red">{t('setupNotDir')}</Text> : null}
           {s.other
             ? <Box flexDirection="column" gap={1}>
@@ -1002,6 +1009,9 @@ const renderPane = async ($: any, e: any) => {
             {s.other
               ? <Button key="setup-back" plain label={t('setupBack')} onPress={() => startSetup($, v, proposedRoot(v.project))} />
               : <Button key="setup-other" plain label={t('setupOther')} onPress={openBrowser} />}
+            {s.previous
+              ? <Button key="setup-cancel" plain label={t('cancel')} onPress={async () => { await showBound($, { ...v, root: s.previous as string, setup: null }) }} />
+              : null}
           </Box>
         </Box>
       )
@@ -1789,7 +1799,14 @@ const renderPane = async ($: any, e: any) => {
         {list.length > 2
           ? <Button key="list-top" plain dimColor label={t('backToTop')} onPress={() => $.ui.scroll({ in: PANE, to: 'start' })} />
           : null}
-        <Text dimColor>{t('boundPath', { path: root })}</Text>
+        <Box gap={1} flexWrap="wrap">
+          <Text dimColor>{t('boundPath', { path: root })}</Text>
+          <Button key="change-location" plain dimColor label={t('changeLocation')} onPress={async () => {
+            await update($, view, cur => (cur ? { ...cur, root: null, setup: null } : cur))
+            await startSetup($, { ...v, root: null, setup: null }, root)
+            await update($, view, cur => (cur?.setup ? { ...cur, setup: { ...cur.setup, previous: root } } : cur))
+          }} />
+        </Box>
       </Box>
     )
 }

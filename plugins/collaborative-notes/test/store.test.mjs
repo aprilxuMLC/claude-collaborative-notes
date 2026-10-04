@@ -116,7 +116,7 @@ test("bindings, the one-time hint and setup inspection", async () => {
   assert.equal((await getBinding(io, "/p")).root, "/p/notes");
   assert.equal(await takeHint(io, "/q"), true);
   assert.equal(await takeHint(io, "/q"), false);
-  assert.deepEqual(await inspectRoot(io, "/p/notes"), { exists: true, lanes: ["deferred_work"] });
+  assert.deepEqual(await inspectRoot(io, "/p/notes"), { exists: true, lanes: ["deferred_work"], nested: "" });
   assert.deepEqual(await inspectRoot(io, "/p/other"), { exists: false, lanes: [] });
   assert.equal(await createRoot(io, "/p/other"), true);
   assert.equal(proposedRoot("/p"), "/p/notes");
@@ -233,4 +233,17 @@ test("a write cancelled at the last moment leaves the lane as it was", async () 
   assert.equal(result.code, "EDITOR_CANCELED");
   assert.equal(files.get("/r/conversation_todo/s.md"), "old\n");
   assert.equal([...files.keys()].some((k) => k.endsWith(".tmp")), false);
+});
+
+test("setup points to a notes folder one level down when the chosen folder has none", async () => {
+  const { inspectRoot } = await import("../hooks/lib/store.js");
+  const tree = { "/p": ["notes", "src"], "/p/notes": ["conversation_todo"] };
+  const io = {
+    exists: async (p) => p in tree || p === "/p",
+    stat: async () => ({ kind: "dir" }),
+    list: async (p) => (tree[p] ?? []).map((name) => ({ name, kind: "dir" })),
+  };
+  const info = await inspectRoot(io, "/p");
+  assert.deepEqual([info.lanes, info.nested], [[], "/p/notes"]);
+  assert.equal((await inspectRoot(io, "/p/notes")).nested, "");
 });
