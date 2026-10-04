@@ -1,0 +1,4 @@
+.local/
+HANDOFF.md
+.DS_Store
+.claude/settings.local.json

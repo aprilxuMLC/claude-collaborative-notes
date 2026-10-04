@@ -1,0 +1,12 @@
+{
+  "name": "collaborative-notes",
+  "description": "Collaborative Notes for Claude Desktop",
+  "owner": { "name": "aprilxuMLC" },
+  "plugins": [
+    {
+      "name": "collaborative-notes",
+      "description": "A shared notes pane beside the conversation: capture, quote, and come back to what matters.",
+      "source": "./plugins/collaborative-notes"
+    }
+  ]
+}
