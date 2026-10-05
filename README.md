@@ -50,6 +50,16 @@ Setting something aside safely is only half the problem; the other half is retur
 
 > **Attention can be released without losing the return path.**
 
+The two are distinct but coupled. Compacting a long conversation is itself an
+attention decision — made by the host, not by you — about which details stay
+in the agent's working context. A note keeps your own judgement of what
+deserves attention; when you bring it back, its source returns the forgotten
+detail to the agent's memory. Memory and attention are best read together, as
+a loop: what stays in memory shapes what can receive attention, and what you
+attend to decides what is worth bringing back into memory.
+
+> **Distinct, but coupled: compaction decides for you; a note lets you decide.**
+
 The current agent does not have to predict every future context need at capture time. A later agent or workflow with read authority can read the note, follow its preserved source back to the original discussion, and read as much surrounding context as its own task requires.
 
 > **Future Context Handle, not Future Context Package.**
@@ -118,31 +128,72 @@ The default is **user-led capture with collaborative maintenance**.
 
 ## Install
 
-Requires the Claude desktop app and the `claude` command in a terminal (Claude Code command line). In a terminal, run:
+Requires the Claude desktop app and git. The commands below use the copy of
+Claude Code that ships with the desktop app; nothing else needs installing.
+
+### macOS
+
+On a Mac without git, run `xcode-select --install` once in Terminal to
+install Apple's Command Line Tools.
+
+In Terminal:
 
 ```sh
+CLAUDE=$(ls -d "$HOME/Library/Application Support/Claude/claude-code"/*/*/claude.app/Contents/MacOS/claude | sort -V | tail -1)
+"$CLAUDE" plugin marketplace add aprilxuMLC/claude-collaborative-notes
+"$CLAUDE" plugin install collaborative-notes@collaborative-notes
+```
+
+The first line picks the newest Claude Code that the desktop app has
+installed. If you also have the Claude Code command line, plain `claude`
+works the same (`claude plugin marketplace add …`).
+
+### Windows
+
+Not yet tried on Windows. Use the Claude Code command line (`claude`) in
+PowerShell; the desktop app's own copy has not been located on Windows yet.
+
+```powershell
 claude plugin marketplace add aprilxuMLC/claude-collaborative-notes
 claude plugin install collaborative-notes@collaborative-notes
 ```
 
-Then restart the Claude desktop app.
+### Then
 
-**Update:**
+Quit the Claude desktop app completely (⌘Q) and open it again. In a project
+that is not set up yet, type `/notes` to open Notes and choose where its notes
+live.
+
+You can also ask Claude, in a Code tab conversation, to run exactly the
+commands above and to stop and report on any error.
+
+**Update** (different from the install commands: `marketplace update` fetches
+the newest release, then `plugin update` installs it):
+
+macOS, in Terminal:
 
 ```sh
+CLAUDE=$(ls -d "$HOME/Library/Application Support/Claude/claude-code"/*/*/claude.app/Contents/MacOS/claude | sort -V | tail -1)
+"$CLAUDE" plugin marketplace update collaborative-notes
+"$CLAUDE" plugin update collaborative-notes@collaborative-notes
+```
+
+Windows, in PowerShell:
+
+```powershell
 claude plugin marketplace update collaborative-notes
 claude plugin update collaborative-notes@collaborative-notes
 ```
 
-Restart the app after updating.
+Then quit the Claude desktop app completely and open it again. Your notes and
+settings are kept.
 
-**Uninstall:**
-
-```sh
-claude plugin uninstall collaborative-notes@collaborative-notes
-```
-
-Your notes stay on disk as plain files in the project's notes folder. Bindings, ticks, marks and language preference live in the plugin store under `~/.claude/plugins/store/`.
+**Uninstall:** run `plugin uninstall collaborative-notes@collaborative-notes`
+and `plugin marketplace remove collaborative-notes` with the same `"$CLAUDE"`
+(or `claude`), then restart the app. Your notes stay in your project folders
+as plain files. The plugin's own data (bindings, ticks, marks, language) stays
+in `~/.claude/plugins/store/`; delete the `collaborative-notes_…` file there if
+you no longer want it.
 
 ## First use
 

@@ -53,6 +53,10 @@ Collaborative Notes 尝试把**注意力本身也变成一种可以共同管理�
 
 > **释放注意力，不等于丢失返回原始语境的路径。**
 
+两者不同，但彼此耦合。压缩长对话本身就是一次注意力判断——由宿主替你做出，决定哪些细节留在 agent 的工作上下文里。便签保存的是你自己的判断：它值得被注意；当你把它带回来，它的来源会把被遗忘的细节重新交还给 agent 的记忆。所以记忆和注意力最好放在一起、动态地看：留在记忆里的东西决定了什么能被注意到，而你注意的东西决定了什么值得被带回记忆。
+
+> **不同，但耦合：压缩替你做决定，便签让你自己做决定。**
+
 当前 Agent 不必在记录时预测未来所有的上下文需求。未来有读取权限的 Agent 或工作流，可以先读 Note，再沿保存的来源回到原始讨论，并按自己的任务补读足够的上下文。
 
 > **保存未来上下文的把手，而不是预先打包未来上下文。**
@@ -121,31 +125,57 @@ Collaborative Notes 尝试把**注意力本身也变成一种可以共同管理�
 
 ## 安装
 
-需要 Claude 桌面版，以及终端里的 `claude` 命令（Claude Code 命令行）。在终端运行：
+需要 Claude 桌面版和 git。下面的命令使用桌面版自带的 Claude Code，不需要另外安装任何东西。
+
+### macOS
+
+如果 Mac 上还没有 git，先在“终端”里运行一次 `xcode-select --install`，安装 Apple 的命令行工具。
+
+在“终端”里：
 
 ```sh
+CLAUDE=$(ls -d "$HOME/Library/Application Support/Claude/claude-code"/*/*/claude.app/Contents/MacOS/claude | sort -V | tail -1)
+"$CLAUDE" plugin marketplace add aprilxuMLC/claude-collaborative-notes
+"$CLAUDE" plugin install collaborative-notes@collaborative-notes
+```
+
+第一行找出桌面版装好的最新一份 Claude Code。如果你另外装了 Claude Code 命令行，直接用 `claude` 也一样（`claude plugin marketplace add …`）。
+
+### Windows
+
+尚未在 Windows 上试过。请在 PowerShell 里使用 Claude Code 命令行（`claude`）；桌面版自带的那份在 Windows 上的位置还没有确认。
+
+```powershell
 claude plugin marketplace add aprilxuMLC/claude-collaborative-notes
 claude plugin install collaborative-notes@collaborative-notes
 ```
 
-然后重启 Claude 桌面版。
+### 然后
 
-**更新：**
+完全退出 Claude 桌面版（⌘Q）再重新打开。在还没设置过的项目里输入 `/notes`，打开便签并选择存放位置。
+
+也可以在 Code 标签页的对话里请 Claude 严格只运行上面的命令，出错就停下报告。
+
+**更新**（和安装的命令不同：`marketplace update` 取得最新版本，`plugin update` 再把它装上）：
+
+macOS，在“终端”里：
 
 ```sh
+CLAUDE=$(ls -d "$HOME/Library/Application Support/Claude/claude-code"/*/*/claude.app/Contents/MacOS/claude | sort -V | tail -1)
+"$CLAUDE" plugin marketplace update collaborative-notes
+"$CLAUDE" plugin update collaborative-notes@collaborative-notes
+```
+
+Windows，在 PowerShell 里：
+
+```powershell
 claude plugin marketplace update collaborative-notes
 claude plugin update collaborative-notes@collaborative-notes
 ```
 
-更新后重启应用。
+然后完全退出 Claude 桌面版再重新打开。便签和设置都会保留。
 
-**卸载：**
-
-```sh
-claude plugin uninstall collaborative-notes@collaborative-notes
-```
-
-便签以普通文件形式留在项目的 notes 文件夹中。绑定、勾选、标记和语言偏好保存在插件 store：`~/.claude/plugins/store/`。
+**卸载：** 用同一个 `"$CLAUDE"`（或 `claude`）运行 `plugin uninstall collaborative-notes@collaborative-notes` 和 `plugin marketplace remove collaborative-notes`，然后重启应用。便签以普通文件的形式留在你的项目文件夹里；插件自己的数据（绑定、勾选、记号、语言）在 `~/.claude/plugins/store/`，不需要时可以删掉其中 `collaborative-notes_…` 开头的文件。
 
 ## 第一次使用
 
