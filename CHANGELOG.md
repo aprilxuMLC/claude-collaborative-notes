@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.2
+
+- ⚙ Change location moved to the top of the pane, beside Search and Refresh.
+- Choosing another notes folder opens the system folder dialog (Finder on
+  macOS, the standard dialog on Windows) instead of the in-pane browser.
+- The long-note editor asks the app's file pane twice before falling back to
+  the text editor, and says why when it does.
+
 ## 0.1.1
 
 - Setup notices when the chosen folder is one level too high: if it holds no

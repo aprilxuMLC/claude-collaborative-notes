@@ -10,7 +10,7 @@ import { findQuote, highlightRuns, parseLines, pasteHits, searchTurns, sentenceR
 import { locate } from './lib/visible.js'
 import {
   childFolder, clipboard, isRootPath, makeDir, makeDirs, moveFile, normalizePath, openInEditor,
-  openLink as openLinkCommand, parentFolder, readAll, readFrom, removeFile, systemLanguage,
+  openLink as openLinkCommand, parentFolder, pickFolder, pickerCancelled, readAll, readFrom, removeFile, systemLanguage,
   tempFile, trimFolderPath,
 } from './lib/platform.js'
 import { assertEditorPath, editorBody, editorBodyFromHeaders, editorCanFinish, editorCommittedState, editorFile, editorMissingFinish, editorObservedState, editorPath, editorSyncCanWrite, editorWriteArgs, readCards, savedNewEditorCleanup } from './lib/notes.js'
@@ -161,6 +161,23 @@ const showBound = async ($: any, v: NotesView) => {
   const marked = ((await $.store.get(marksKey(v))) ?? {}) as Record<string, NotesMark>
   await update($, marks, () => marked)
   await loadCards($, v)
+}
+
+// Show the system folder dialog and wait for the person's choice. Read as a
+// stream so a slow choice is never cut off. Cancel → { path: '' }.
+const pickFolderWithDialog = async ($: any, title: string, initial: string): Promise<{ path: string; error?: string }> => {
+  const command = pickFolder(title, initial, await isWindows($))
+  let out = ''
+  let err = ''
+  try {
+    for await (const chunk of $.process.spawn(command.env ? { argv: command.argv, env: command.env } : { argv: command.argv })) {
+      if (chunk.stream === 'stdout') out += chunk.text
+      else if (chunk.stream === 'stderr') err += chunk.text
+    }
+  } catch (e) { return { path: '', error: String(e).slice(0, 160) } }
+  const path = out.replace(/[\r\n]+$/, '').replace(/(.)[\\/]+$/, '$1')
+  if (path) return { path }
+  return pickerCancelled(err) ? { path: '' } : { path: '', error: err.trim().slice(0, 160) }
 }
 
 const startSetup = async ($: any, v: NotesView, candidate: string, other = false) => {
@@ -939,15 +956,13 @@ const renderPane = async ($: any, e: any) => {
         await showBound($, { ...v, root: s.candidate, setup: null })
         watchDisk($)
       }
-      const openBrowser = async () => {
-        await update($, view, (cur: NotesView | null) => cur?.setup ? {
-          ...cur, setup: { ...cur.setup, other: true, browsePath: cur.project, folders: [] },
-        } : cur)
-        await browseTo($, v.project)
-      }
-      const useBrowsedFolder = async () => {
-        const current = await read($, view)
-        if (current?.setup) await startSetup($, current, current.setup.browsePath, true)
+      // The system's own folder dialog (Finder / Windows), as in the Codex
+      // release; typing a path stays as a fallback.
+      const chooseFolder = async () => {
+        const picked = await pickFolderWithDialog($, t('pickFolderTitle'), s.candidate)
+        if (picked.path) { await startSetup($, v, normalizePath(picked.path), true); return }
+        if (picked.error) await say($, t('pickFolderFailed', { detail: picked.error }), true)
+        await update($, view, (cur: NotesView | null) => cur?.setup ? { ...cur, setup: { ...cur.setup, other: true } } : cur)
       }
       return (
         <Box flexDirection="column" gap={1}>
@@ -965,32 +980,11 @@ const renderPane = async ($: any, e: any) => {
             : null}
           {s.notDir ? <Text color="red">{t('setupNotDir')}</Text> : null}
           {s.other
-            ? <Box flexDirection="column" gap={1}>
-              <Text bold>{s.browsePath}</Text>
-              <Box gap={1}>
-                {!isRootPath(s.browsePath) ? <Button key="browse-up" plain label={t('browseUp')} onPress={() => browseTo($, parentFolder(s.browsePath))} /> : null}
-                <Button key="browse-use" variant="primary" label={t('browseUse')} onPress={useBrowsedFolder} />
-              </Box>
-              {s.folders.length
-                ? s.folders.map((name: string) => <Button key={`browse-${name}`} plain dimColor={name.startsWith('.')} label={`📁 ${name}`} onPress={() => browseTo($, childFolder(s.browsePath, name))} />)
-                : <Text dimColor>{t('browseEmpty')}</Text>}
-              <Input key="browse-new-folder" placeholder={t('browseNewPlaceholder')} label={t('browseNew')} submitLabel={t('browseNewSubmit')} onSubmit={async (value: string) => {
-                if (!validFolderName(value)) { await say($, t('setupInvalid'), true); return }
-                const name = value.trim()
-                const path = childFolder(s.browsePath, name)
-                try {
-                  const result = await runPlatform($, windows => makeDir(path, windows))
-                  if (result.exitCode !== 0) { await say($, t('browseCreateFailed'), true); return }
-                  await browseTo($, path)
-                } catch { await say($, t('browseCreateFailed'), true) }
-              }} />
-              <Input key="setup-path" placeholder={t('setupOtherPlaceholder')} submitLabel={t('setupOtherSubmit')} onSubmit={async (value: string) => {
-                const candidate = resolveLocation(v.project, value)
-                if (!candidate) { await say($, t('setupInvalid'), true); return }
-                const current = await read($, view)
-                await startSetup($, current ?? v, candidate, true)
-              }} />
-            </Box>
+            ? <Input key="setup-path" placeholder={t('setupOtherPlaceholder')} submitLabel={t('setupOtherSubmit')} onSubmit={async (value: string) => {
+              const candidate = resolveLocation(v.project, value)
+              if (!candidate) { await say($, t('setupInvalid'), true); return }
+              await startSetup($, v, candidate, true)
+            }} />
             : null}
           <Text bold>{t('laneNamesTitle')}</Text>
           <Text dimColor>{t('laneNamesHint')}</Text>
@@ -1006,9 +1000,8 @@ const renderPane = async ($: any, e: any) => {
             } : cur)} />)}
           <Box gap={1}>
             {s.notDir ? null : <Button key="setup-use" variant="primary" label={t('setupUse')} onPress={bind} />}
-            {s.other
-              ? <Button key="setup-back" plain label={t('setupBack')} onPress={() => startSetup($, v, proposedRoot(v.project))} />
-              : <Button key="setup-other" plain label={t('setupOther')} onPress={openBrowser} />}
+            <Button key="setup-other" plain label={t('setupOther')} onPress={chooseFolder} />
+            {s.other ? <Button key="setup-back" plain label={t('setupBack')} onPress={() => startSetup($, v, proposedRoot(v.project))} /> : null}
             {s.previous
               ? <Button key="setup-cancel" plain label={t('cancel')} onPress={async () => { await showBound($, { ...v, root: s.previous as string, setup: null }) }} />
               : null}
@@ -1109,14 +1102,22 @@ const renderPane = async ($: any, e: any) => {
         const path = await editorPath(currentRoot, editPrefix(v), key || `new-${Date.now().toString(36)}`)
         const header = t('editorHeaderApp')
         await $.fs.write(path, editorFile(header, body))
-        try {
-          const shown = await $.mcp.call('ccd_view', 'show_pane', { pane: 'file', path, line: 3 })
-          if (!shown?.isError) {
-            await setEditorState($, { lane: laneKey, key, expected: vers[laneKey], mode, path, synced: mode === 'new' ? '' : body, observed: body, header })
-            return
-          }
-        } catch { /* no desktop file pane here: fall back to the text editor */ }
+        // The app sometimes ignores the first request to show its file pane
+        // (P18): ask twice before falling back, and say why if it still fails.
+        let reason = ''
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          try {
+            const shown = await $.mcp.call('ccd_view', 'show_pane', { pane: 'file', path, line: 3 })
+            if (!shown?.isError) {
+              await setEditorState($, { lane: laneKey, key, expected: vers[laneKey], mode, path, synced: mode === 'new' ? '' : body, observed: body, header })
+              return
+            }
+            reason = String(shown?.content?.[0]?.text ?? JSON.stringify(shown)).slice(0, 160)
+          } catch (err) { reason = String(err).slice(0, 160) }
+          if (attempt === 0) await $.clock.sleep(500)
+        }
         await runPlatform($, windows => removeFile(path, windows))
+        await say($, t('filePaneFallback', { detail: reason }), true)
       }
       const made = await runPlatform($, windows => tempFile('collaborative-note', windows))
       const path = made.stdout.trim()
@@ -1397,6 +1398,11 @@ const renderPane = async ($: any, e: any) => {
         <Box gap={1}>
           <Button key="hdr-search" plain label={`⌕ ${t('search')}`} onPress={() => update($, search, cur => (cur === null ? '' : null))} />
           <Button key="hdr-refresh" plain label={`↻ ${t('refresh')}`} onPress={async () => { await loadCards($, v); await say($, t('refreshed')) }} />
+          <Button key="hdr-location" plain label={`⚙ ${t('changeLocation')}`} onPress={async () => {
+            await update($, view, cur => (cur ? { ...cur, root: null, setup: null } : cur))
+            await startSetup($, { ...v, root: null, setup: null }, root)
+            await update($, view, cur => (cur?.setup ? { ...cur, setup: { ...cur.setup, previous: root } } : cur))
+          }} />
           <Button key="hdr-lang" plain label={t('langSwitch')} onPress={async () => {
             const next = langNow === 'zh' ? 'en' : 'zh'
             await $.store.set('locale', next)
@@ -1799,14 +1805,7 @@ const renderPane = async ($: any, e: any) => {
         {list.length > 2
           ? <Button key="list-top" plain dimColor label={t('backToTop')} onPress={() => $.ui.scroll({ in: PANE, to: 'start' })} />
           : null}
-        <Box gap={1} flexWrap="wrap">
-          <Text dimColor>{t('boundPath', { path: root })}</Text>
-          <Button key="change-location" plain dimColor label={t('changeLocation')} onPress={async () => {
-            await update($, view, cur => (cur ? { ...cur, root: null, setup: null } : cur))
-            await startSetup($, { ...v, root: null, setup: null }, root)
-            await update($, view, cur => (cur?.setup ? { ...cur, setup: { ...cur.setup, previous: root } } : cur))
-          }} />
-        </Box>
+        <Text dimColor>{t('boundPath', { path: root })}</Text>
       </Box>
     )
 }

@@ -41,8 +41,8 @@
   transcript 条目取得。引用来源保存为 `{sessionId, messageId}`；其中
   `messageId` 是被引用文本块对应的 transcript 条目 `uuid`。（Q3、Q6、I1）
 - **项目：** 会话所在的文件夹。每个项目设置一次便签根目录，默认是
-  `<项目>/notes`。用户可以浏览文件夹（向上、隐藏文件夹排在最后、新建文件夹）
-  或直接输入路径。已配置的根目录若不存在，会报告错误，不会悄悄重建。（D4；
+  `<项目>/notes`。用户可以用系统的文件夹选择窗口（macOS 通过 osascript 的
+  `choose folder`，Windows 用 FolderBrowserDialog）或直接输入路径；“更改位置”可再次设置。已配置的根目录若不存在，会报告错误，不会悄悄重建。（D4；
   `hooks/register.tsx`）
 - **布局与格式：** `<便签根目录>/<分道>/<sessionId>.md`，分道为
   `conversation_todo`、`deferred_work`、`knowledge_candidate` 和

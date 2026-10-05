@@ -71,3 +71,19 @@ test("Windows and POSIX path helpers handle drive roots", () => {
   assert.equal(resolveLocation("C:/Users/a b/proj", "C:\\"), "C:/");
   assert.equal(resolveLocation("/Users/x", "../notes"), "/Users/notes");
 });
+
+test("the folder dialog gets title and start folder as data, never as script text", async () => {
+  const { pickFolder, pickerCancelled, MAC_FOLDER_PICKER_SCRIPT } = await import("../hooks/lib/platform.js");
+  const odd = `/Users/O'Neil/"a" $x`;
+  const mac = pickFolder("Pick", odd, false);
+  assert.deepEqual(mac.argv.slice(0, 3), ["/usr/bin/osascript", "-e", MAC_FOLDER_PICKER_SCRIPT]);
+  assert.deepEqual(mac.argv.slice(3), ["--", "Pick", odd]);
+  assert.ok(!MAC_FOLDER_PICKER_SCRIPT.includes("O'Neil"));
+  const win = pickFolder("Pick", "C:/a’b", true);
+  assert.equal(win.argv.at(-1).includes("a’b"), false);
+  assert.deepEqual(win.env, { CN_ARG1: "Pick", CN_ARG2: "C:/a’b" });
+  assert.ok(win.argv.includes("-STA"));
+  assert.equal(pickerCancelled("execution error: User canceled. (-128)"), true);
+  assert.equal(pickerCancelled(""), true);
+  assert.equal(pickerCancelled("syntax error"), false);
+});

@@ -103,3 +103,31 @@ export const isRootPath = (path) => {
   const clean = trimFolderPath(path);
   return clean === "/" || /^[A-Za-z]:\/$/.test(clean);
 };
+
+// The system folder dialog. macOS: osascript's own `choose folder` (no other
+// app is scripted, so no automation permission); Windows: the standard
+// FolderBrowserDialog. Title and start folder go as arguments / environment,
+// never into script source. Prints the chosen path; prints nothing on cancel.
+export const MAC_FOLDER_PICKER_SCRIPT = `on run argv
+  set pickerTitle to item 1 of argv
+  set initialPath to item 2 of argv
+  tell me to activate
+  try
+    set chosen to choose folder with prompt pickerTitle default location (POSIX file initialPath)
+  on error number n
+    if n is -128 then error number -128
+    set chosen to choose folder with prompt pickerTitle
+  end try
+  POSIX path of chosen
+end run`;
+
+export function pickFolder(title, initial, windows) {
+  if (!windows) return { argv: ["/usr/bin/osascript", "-e", MAC_FOLDER_PICKER_SCRIPT, "--", String(title), String(initial || "/")] };
+  const script = "[Console]::OutputEncoding = [Text.Encoding]::UTF8; Add-Type -AssemblyName System.Windows.Forms; "
+    + "$d = New-Object System.Windows.Forms.FolderBrowserDialog; $d.Description = $env:CN_ARG1; $d.ShowNewFolderButton = $true; "
+    + "if ($env:CN_ARG2 -and [IO.Directory]::Exists($env:CN_ARG2)) { $d.SelectedPath = $env:CN_ARG2 }; "
+    + "if ($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::Out.Write($d.SelectedPath) }";
+  return { argv: ["powershell", "-NoProfile", "-NonInteractive", "-STA", "-Command", script], env: { CN_ARG1: String(title), CN_ARG2: String(initial || "") } };
+}
+
+export const pickerCancelled = (stderr) => !String(stderr ?? "").trim() || /(?:\(-128\)|\b-128\b|user\s+cancell?ed)/i.test(String(stderr));

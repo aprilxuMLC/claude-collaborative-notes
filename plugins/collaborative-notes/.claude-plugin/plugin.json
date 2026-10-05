@@ -1,6 +1,6 @@
 {
   "name": "collaborative-notes",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A shared notes pane beside the conversation: capture, quote, and come back to what matters.",
   "author": { "name": "aprilxuMLC" },
   "types": "./types/index.d.ts"

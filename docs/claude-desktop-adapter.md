@@ -49,8 +49,9 @@ the plugin and handled by its `tool.call` hook. (A2, A4)
   `{sessionId, messageId}`, where `messageId` is the transcript entry `uuid`
   for the quoted text block. (Q3, Q6, I1)
 - **Project:** the session's folder. Setup binds one notes root per project,
-  defaulting to `<project>/notes`. The user can browse folders (Up, hidden
-  folders listed last, New folder) or type a path. A missing configured root
+  defaulting to `<project>/notes`. The user can pick a folder with the system folder
+  dialog (macOS: osascript `choose folder`; Windows: FolderBrowserDialog) or
+  type a path; Change location runs setup again. A missing configured root
   is reported and is never silently recreated. (D4; `hooks/register.tsx`)
 - **Layout and format:** `<notes root>/<lane>/<sessionId>.md`, using
   `conversation_todo`, `deferred_work`, `knowledge_candidate`, and
